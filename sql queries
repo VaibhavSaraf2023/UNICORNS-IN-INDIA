@@ -1,0 +1,70 @@
+--Select companies in the 'E-Commerce' sector with current valuations above $5B:
+SELECT Company, Sector, Current_Valuation ($B) 
+FROM unicorntable
+WHERE Sector = 'E-Commerce' AND Current_Valuation ($B)> 5;
+
+--Select companies with the highest entry valuation and their respective sectors:
+SELECT Company, Sector, Entry_Valuation ($B)
+FROM unicorntable 
+WHERE Entry_Valuation ($B) = (SELECT MAX(Entry_Valuation ($B)) FROM unicorntable)
+
+--Select companies with entry valuations above the sector average entry valuation:
+SELECT Company, Sector, Entry_Valuation ($B)
+FROM unicorntable
+WHERE Entry_Valuation ($B) > (SELECT AVG(Entry_Valuation ($B)) FROM unicorntable GROUP BY Sector);
+
+--Select companies with the lowest current valuation in each sector:
+SELECT Company, Sector, Current_Valuation ($B)
+FROM (
+    SELECT Company, Sector, Current_Valuation ($B),
+           ROW_NUMBER() OVER (PARTITION BY Sector ORDER BY Current_Valuation ($B) ASC) AS rnk
+    FROM unicorntable
+) ranked
+WHERE rnk = 1;
+
+--Select companies with the highest total valuation change (current valuation - entry valuation):
+SELECT Company, Sector, Current_Valuation ($B) - Entry_Valuation ($B) AS Valuation_Change 
+FROM unicorntable 
+ORDER BY Valuation_Change DESC;
+
+--Select companies with the highest total valuation change percentage [(current valuation - entry valuation) / entry valuation * 100]:
+SELECT Company, Sector, 
+       ((Current_Valuation ($B)- Entry_Valuation ($B) / Entry_Valuation ($B)) * 100 AS Valuation_Change_Percentage
+FROM unicorntable 
+ORDER BY Valuation_Change_Percentage DESC;
+
+--Select companies with entry valuations above the 90th percentile:
+SELECT Company, Entry_Valuation ($B)
+FROM unicorntable 
+WHERE Entry_Valuation ($B) > (SELECT PERCENTILE_CONT(0.9) WITHIN GROUP (ORDER BY Entry_Valuation ($B)) FROM unicorntable);
+
+--Select companies with the highest total valuation change percentage and their respective sectors:
+SELECT Company, Sector, 
+       (MAX(Current_Valuation ($B)) - MIN(Entry_Valuation ($B))) / MIN(Entry_Valuation ($B)) * 100 AS Valuation_Change_Percentage
+FROM unicorntable
+GROUP BY Sector
+ORDER BY Valuation_Change_Percentage DESC
+LIMIT 1;
+
+--Select companies with the highest total valuation change percentage in each sector, considering only companies with entry valuations above $1B:
+SELECT Company, Sector, 
+       (MAX(Current_Valuation ($B)) - MIN(Entry_Valuation ($B))) / MIN(Entry_Valuation ($B)) * 100 AS Valuation_Change_Percentage
+FROM unicorntable 
+WHERE Entry_Valuation > 1
+GROUP BY Sector;
+
+--Select companies with the highest number of select investors:
+SELECT Company, `Select Investors` 
+FROM unicorntable 
+ORDER BY LENGTH(`Select Investors`) - LENGTH(REPLACE(`Select Investors`, ',', '')) DESC
+LIMIT 1;
+
+--Select companies with entry valuations closest to the sector average entry valuation:
+SELECT Company, Sector, Entry_Valuation ($B)
+FROM unicorntable 
+ORDER BY ABS(Entry_Valuation ($B) - (SELECT AVG(Entry_Valuation ($B)) FROM unicorntable WHERE Sector = t.Sector)) ASC;
+
+--Select companies with entry valuations below the sector average entry valuation and located in 'Mumbai':
+SELECT Company, Sector, Entry_Valuation ($B), Location 
+FROM unicorntable 
+WHERE Entry_Valuation ($B)< (SELECT AVG(Entry_Valuation ($B)) FROM unicorntable WHERE Sector = t.Sector) AND Location = 'Mumbai';
